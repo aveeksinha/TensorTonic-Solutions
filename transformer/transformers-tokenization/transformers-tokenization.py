@@ -22,39 +22,26 @@ class SimpleTokenizer:
         Build vocabulary from a list of texts.
         Add special tokens first, then unique words.
         """
-        # Reset vocab
-        self.word_to_id = {}
-        self.id_to_word = {}
+        # 1. Start with special tokens in the fixed order
+        special_tokens = [self.pad_token, self.unk_token, self.bos_token, self.eos_token]
         
-        # Add special tokens with fixed IDs
-        special_tokens = [
-            self.pad_token,
-            self.unk_token,
-            self.bos_token,
-            self.eos_token
-        ]
-        
-        for idx, token in enumerate(special_tokens):
-            self.word_to_id[token] = idx
-            self.id_to_word[idx] = token
-        
-        # Collect unique words from texts
+        # 2. Extract unique words from texts, lowercased and split by whitespace
         unique_words = set()
         for text in texts:
             words = text.lower().split()
             unique_words.update(words)
         
-        # Sort words for deterministic IDs
-        sorted_words = sorted(unique_words)
+        # 3. Sort unique words for deterministic IDs
+        sorted_words = sorted(list(unique_words))
         
-        # Add words after special tokens
-        start_id = len(special_tokens)
-        for i, word in enumerate(sorted_words):
-            self.word_to_id[word] = start_id + i
-            self.id_to_word[start_id + i] = word
+        # 4. Combine and build the mappings
+        full_vocab = special_tokens + sorted_words
         
-        # Set vocab size
-        self.vocab_size = len(self.word_to_id)
+        for i, word in enumerate(full_vocab):
+            self.word_to_id[word] = i
+            self.id_to_word[i] = word
+            
+        self.vocab_size = len(full_vocab)
     
     def encode(self, text: str) -> List[int]:
         """
@@ -62,18 +49,17 @@ class SimpleTokenizer:
         Use UNK for unknown words.
         """
         words = text.lower().split()
-        unk_id = self.word_to_id[self.unk_token]
+        unk_id = self.word_to_id.get(self.unk_token)
         
-        return [
-            self.word_to_id.get(word, unk_id)
-            for word in words
-        ]
+        return [self.word_to_id.get(word, unk_id) for word in words]
     
     def decode(self, ids: List[int]) -> str:
         """
         Convert list of token IDs back to text.
         """
-        return " ".join(
-            self.id_to_word.get(i, self.unk_token)
-            for i in ids
-        )
+        unk_word = self.unk_token
+        
+        # Map IDs back to words, defaulting to <UNK> if the ID is missing
+        decoded_words = [self.id_to_word.get(i, unk_word) for i in ids]
+        
+        return " ".join(decoded_words)
